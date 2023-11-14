@@ -49,7 +49,7 @@ def plot_trajectory(keyframes, times, coefs, polynomial_order, num_segments):
 
 # Define keyframes, times, and other parameters for testing
 keyframes = [[0, 0, 0], [1, 1, 1], [2, 0, 2]]  # Example keyframes
-times = [0, 1, 2]  # Example times
+times = [0, 1, 5]  # Example times
 polynomial_order = 7  # Example polynomial order
 
 # Generate a test trajectory with linear interpolation

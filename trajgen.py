@@ -274,7 +274,7 @@ plot_trajectory(keyframes, times, coefs, polynomial_order, len(keyframes) - 1)
 import numpy as np
 from qpsolvers import solve_qp
 
-def generate_trajectory_qp(keyframes, times, polynomial_order, mu_r, mu_psi):
+# def generate_trajectory_qp(keyframes, times, polynomial_order, mu_r, mu_psi):
     # num_segments = len(keyframes) - 1
     # num_variables_per_segment = polynomial_order * 4  # For x, y, z, ψ
     # total_variables = num_variables_per_segment * num_segments
@@ -302,65 +302,128 @@ def generate_trajectory_qp(keyframes, times, polynomial_order, mu_r, mu_psi):
     #     for j in range(4):  # x, y, z, ψ
     #         A[i * 4 + j, i * num_variables_per_segment + j * polynomial_order] = 1
     #         b[i * 4 + j] = keyframe[j]
-    ########
+    #################################################### 1
+    # num_segments = len(keyframes) - 1
+    # num_variables_per_segment = polynomial_order * 4  # For x, y, z, ψ
+    # total_variables = num_variables_per_segment * num_segments
+
+    # # Hessian matrix H and linear cost vector f setup remains the same
+    # H = np.zeros((total_variables, total_variables))
+    # for i in range(num_segments):
+    #     for j in range(3):
+    #         # Snap coefficients (4th derivative) for x, y, z
+    #         snap_indices = np.arange(j * polynomial_order + 3, (j + 1) * polynomial_order)
+    #         H[snap_indices + i * num_variables_per_segment, snap_indices + i * num_variables_per_segment] = mu_r
+    #     # Yaw acceleration coefficient (2nd derivative)
+    #     yaw_acc_index = 3 * polynomial_order + 1
+    #     H[yaw_acc_index + i * num_variables_per_segment, yaw_acc_index + i * num_variables_per_segment] = mu_psi
+
+    # # Linear cost vector f
+    # f = np.zeros(total_variables)
+
+    # # Adjust the constraints matrices A and b
+    # num_constraints = len(keyframes) * 4 + (num_segments - 1) * 4  # Additional continuity constraints
+    # A = np.zeros((num_constraints, total_variables))
+    # b = np.zeros(num_constraints)
+    # # num_constraints = len(keyframes) * 4 * 3 + (num_segments - 1) * 4 * 2
+    # # A = np.zeros((num_constraints, total_variables))
+    # # b = np.zeros(num_constraints)
+
+    # constraint_idx = 0
+    # for i in range(num_segments):
+    # # Keyframe constraints
+    #     # for i, keyframe in enumerate(keyframes):
+    #     #     for j in range(4):  # x, y, z, ψ
+    #     #         if i < num_segments:  # For all but the last segment
+    #     #             A[i * 4 + j, i * num_variables_per_segment + j * polynomial_order] = 1
+    #     #             b[i * 4 + j] = keyframe[j]
+    #     #         if i > 0:  # Continuity constraints (except for the first segment)
+    #     #             A[(len(keyframes) * 4) + (i - 1) * 4 + j, (i - 1) * num_variables_per_segment + j * polynomial_order] = -1
+    #     #             A[(len(keyframes) * 4) + (i - 1) * 4 + j, i * num_variables_per_segment + j * polynomial_order] = 1
+    #     #             b[(len(keyframes) * 4) + (i - 1) * 4 + j] = 0
+    #     if i < num_segments - 1:
+    #         next_segment_idx = i + 1
+    #         for j in range(4):  # x, y, z, ψ
+    #             # Velocity continuity
+    #             A[constraint_idx, (i * num_variables_per_segment) + (j * polynomial_order + 1)] = 1
+    #             A[constraint_idx, (next_segment_idx * num_variables_per_segment) + (j * polynomial_order + 1)] = -1
+    #             constraint_idx += 1
+
+    #             # Acceleration continuity
+    #             A[constraint_idx, (i * num_variables_per_segment) + (j * polynomial_order + 2)] = 1
+    #             A[constraint_idx, (next_segment_idx * num_variables_per_segment) + (j * polynomial_order + 2)] = -1
+    #             constraint_idx += 1
+
+    # # Solve QP problem
+    # c = solve_qp(H, f, A, b,solver="proxqp")
+
+    # if c is not None:
+    #     return c
+    # else:
+    #     raise ValueError("QP optimization failed")
+
+    ############################################################# 2
+
+def generate_trajectory_qp(keyframes, times, polynomial_order, mu_r, mu_psi):
     num_segments = len(keyframes) - 1
-    num_variables_per_segment = polynomial_order * 4  # For x, y, z, ψ
+    num_variables_per_segment = polynomial_order * 4  # x, y, z, ψ
     total_variables = num_variables_per_segment * num_segments
 
-    # Hessian matrix H and linear cost vector f setup remains the same
+    # Hessian matrix H for the quadratic cost
     H = np.zeros((total_variables, total_variables))
     for i in range(num_segments):
+        # Snap (4th derivative) for x, y, z
         for j in range(3):
-            # Snap coefficients (4th derivative) for x, y, z
-            snap_indices = np.arange(j * polynomial_order + 3, (j + 1) * polynomial_order)
-            H[snap_indices + i * num_variables_per_segment, snap_indices + i * num_variables_per_segment] = mu_r
-        # Yaw acceleration coefficient (2nd derivative)
-        yaw_acc_index = 3 * polynomial_order + 1
-        H[yaw_acc_index + i * num_variables_per_segment, yaw_acc_index + i * num_variables_per_segment] = mu_psi
+            snap_indices = i * num_variables_per_segment + j * polynomial_order + np.arange(4, polynomial_order)
+            H[np.ix_(snap_indices, snap_indices)] = mu_r
+
+        # Yaw acceleration (2nd derivative)
+        yaw_indices = i * num_variables_per_segment + 3 * polynomial_order + np.arange(2, polynomial_order)
+        H[np.ix_(yaw_indices, yaw_indices)] = mu_psi
 
     # Linear cost vector f
     f = np.zeros(total_variables)
 
-    # Adjust the constraints matrices A and b
-    num_constraints = len(keyframes) * 4 + (num_segments - 1) * 4  # Additional continuity constraints
+    # Constraints matrices A and b
+    num_keyframe_constraints = len(keyframes) * 4
+    num_continuity_constraints = (num_segments - 1) * 4 * 2  # For each segment: velocity and acceleration
+    num_constraints = num_keyframe_constraints + num_continuity_constraints
     A = np.zeros((num_constraints, total_variables))
     b = np.zeros(num_constraints)
-    # num_constraints = len(keyframes) * 4 * 3 + (num_segments - 1) * 4 * 2
-    # A = np.zeros((num_constraints, total_variables))
-    # b = np.zeros(num_constraints)
 
-    constraint_idx = 0
+    # Position constraints at keyframes
     for i in range(num_segments):
-    # Keyframe constraints
-        # for i, keyframe in enumerate(keyframes):
-        #     for j in range(4):  # x, y, z, ψ
-        #         if i < num_segments:  # For all but the last segment
-        #             A[i * 4 + j, i * num_variables_per_segment + j * polynomial_order] = 1
-        #             b[i * 4 + j] = keyframe[j]
-        #         if i > 0:  # Continuity constraints (except for the first segment)
-        #             A[(len(keyframes) * 4) + (i - 1) * 4 + j, (i - 1) * num_variables_per_segment + j * polynomial_order] = -1
-        #             A[(len(keyframes) * 4) + (i - 1) * 4 + j, i * num_variables_per_segment + j * polynomial_order] = 1
-        #             b[(len(keyframes) * 4) + (i - 1) * 4 + j] = 0
-        if i < num_segments - 1:
-            next_segment_idx = i + 1
-            for j in range(4):  # x, y, z, ψ
+        t = times[i+1] - times[i]
+        for j in range(4):  # x, y, z, ψ
+            A[i * 4 + j, i * num_variables_per_segment + j * polynomial_order : i * num_variables_per_segment + j * polynomial_order + polynomial_order] = np.array([t**k for k in range(polynomial_order)])
+            b[i * 4 + j] = keyframes[i+1][j]
+
+    # Continuity constraints between segments
+    constraint_idx = num_keyframe_constraints
+    for i in range(1, num_segments):
+        for j in range(4):  # x, y, z, ψ
+            # Ensure indices are within bounds
+            if constraint_idx < num_constraints:
                 # Velocity continuity
-                A[constraint_idx, (i * num_variables_per_segment) + (j * polynomial_order + 1)] = 1
-                A[constraint_idx, (next_segment_idx * num_variables_per_segment) + (j * polynomial_order + 1)] = -1
+                A[constraint_idx, (i - 1) * num_variables_per_segment + j * polynomial_order + 1] = 1  # End of segment i-1
+                A[constraint_idx, i * num_variables_per_segment + j * polynomial_order + 1] = -1  # Start of segment i
                 constraint_idx += 1
 
                 # Acceleration continuity
-                A[constraint_idx, (i * num_variables_per_segment) + (j * polynomial_order + 2)] = 1
-                A[constraint_idx, (next_segment_idx * num_variables_per_segment) + (j * polynomial_order + 2)] = -1
+                A[constraint_idx, (i - 1) * num_variables_per_segment + j * polynomial_order + 2] = 2  # End of segment i-1
+                A[constraint_idx, i * num_variables_per_segment + j * polynomial_order + 2] = -2  # Start of segment i
                 constraint_idx += 1
 
+    epsilon = 1e-8  # Small positive value
+    np.fill_diagonal(H, np.diag(H) + epsilon)
     # Solve QP problem
-    c = solve_qp(H, f, A, b,solver="proxqp")
+    c = solve_qp(H, f, A, b, solver="cvxopt")
 
     if c is not None:
         return c
     else:
         raise ValueError("QP optimization failed")
+
 
 def plot_trajectory_qp(keyframes, times, c, polynomial_order, num_segments):
     # Similar plotting function as before
@@ -394,8 +457,8 @@ def plot_trajectory_qp(keyframes, times, c, polynomial_order, num_segments):
 
 
 # Example usage
-keyframes = [[0, 0, 0, 0], [1, 1, 2, np.pi/2], [4, 2, 8, np.pi/2], [5, 0, 2, np.pi]]  # Keyframes with yaw angles
-times = [0, 1, 2, 3]  # Times corresponding to each keyframe
+keyframes = [[0, 0, 0, 0], [1, 1, 3, np.pi/4], [4, 2, 8, np.pi/2], [5, 0, 2, np.pi]]  # Keyframes with yaw angles
+times = [0, 1, 2,3]  # Times corresponding to each keyframe
 polynomial_order = 5  # Quintic polynomials
 mu_r = 1  # Weight for snap
 mu_psi = 1  # Weight for yaw acceleration
