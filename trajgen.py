@@ -257,7 +257,13 @@ def plot_trajectory(keyframes, times, coefs, polynomial_order, num_segments):
     plt.show()
 
 # Define keyframes, times, and other parameters
-keyframes = [[0, 0, 0, 0], [1 , 10 , 2 , np.pi/4], [4, 2, 8, np.pi/2], [5, 0, 2, np.pi]]  # Example keyframes with yaw angles
+# keyframes = [[0, 0, 0, 0],[1,1,0,0],[2,2,6,0],[3,3,4,0], [4 , 4 , 5 , 0], [5, 5, 5, 0], [6, 6, 6, 0]]  # Example keyframes with yaw angles
+keyframes = [
+    [0, 0, 0, 0.6],    # Starting position at time 0
+    [1, 0, 0, 0.6],    # First keyframe at time 1
+    [2, 2, 0, 0.6],    # Second keyframe at time 2
+    [3, 2, 0, 0.6]    # Third keyframe at time 3     # Final position at time 6
+]
 times = [0, 1, 2,3]  # Example times
 polynomial_order = 5  # Using quintic polynomials for each segment
 mu_r = 1  # Weight for snap
@@ -457,8 +463,17 @@ def plot_trajectory_qp(keyframes, times, c, polynomial_order, num_segments):
 
 
 # Example usage
-keyframes = [[0, 0, 0, 0], [1, 1, 3, np.pi/4], [4, 2, 8, np.pi/2], [5, 0, 2, np.pi]]  # Keyframes with yaw angles
-times = [0, 1, 2,3]  # Times corresponding to each keyframe
+# keyframes = [[0, 0, 0, 0],[1,1,0,0],[2,2,6,0],[3,3,4,0], [4 , 4 , 5 , 0], [5, 5, 5, 0], [6, 6, 6, 0]]  # Example keyframes with yaw angles
+keyframes = [
+    [0, 0, 0, 0],    # Starting position at time 0
+    [1, 1, 1, 1],    # First keyframe at time 1
+    [2, 0, 2, 2],    # Second keyframe at time 2
+    [3, 1, 3, 3],    # Third keyframe at time 3
+    [4, 0, 4, 4],    # Fourth keyframe at time 4
+    [5, 1, 5, 5],    # Fifth keyframe at time 5
+    [6, 0, 6, 6]     # Final position at time 6
+]
+times = [0, 1, 2,3,4,5,6]  # Times corresponding to each keyframe
 polynomial_order = 5  # Quintic polynomials
 mu_r = 1  # Weight for snap
 mu_psi = 1  # Weight for yaw acceleration
